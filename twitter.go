@@ -49,7 +49,7 @@ import (
 	"strings"
 
 	"github.com/ChimeraCoder/tokenbucket"
-	"github.com/garyburd/go-oauth/oauth"
+	"github.com/mchusovlianov/go-oauth/oauth"
 )
 
 const (
@@ -68,6 +68,7 @@ var oauthClient = oauth.Client{
 
 type TwitterApi struct {
 	Credentials          *oauth.Credentials
+	oAuthCredentials     oauth.Credentials
 	queryQueue           chan query
 	bucket               *tokenbucket.Bucket
 	returnRateLimitError bool
@@ -101,7 +102,7 @@ const DEFAULT_CAPACITY = 5
 
 //NewTwitterApi takes an user-specific access token and secret and returns a TwitterApi struct for that user.
 //The TwitterApi struct can be used for accessing any of the endpoints available.
-func NewTwitterApi(access_token string, access_token_secret string) *TwitterApi {
+func NewTwitterApi(access_token, access_token_secret,consumer_key, consumer_secret_key string) *TwitterApi {
 	//TODO figure out how much to buffer this channel
 	//A non-buffered channel will cause blocking when multiple queries are made at the same time
 	queue := make(chan query)
@@ -109,6 +110,10 @@ func NewTwitterApi(access_token string, access_token_secret string) *TwitterApi 
 		Credentials: &oauth.Credentials{
 			Token:  access_token,
 			Secret: access_token_secret,
+		},
+		oAuthCredentials: &oauth.Credentials{
+			Token: consumer_key,
+			Secret: consumer_secret_key,
 		},
 		queryQueue:           queue,
 		bucket:               nil,
@@ -189,7 +194,7 @@ func cleanValues(v url.Values) url.Values {
 
 // apiGet issues a GET request to the Twitter API and decodes the response JSON to data.
 func (c TwitterApi) apiGet(urlStr string, form url.Values, data interface{}) error {
-	resp, err := oauthClient.Get(c.HttpClient, c.Credentials, urlStr, form)
+	resp, err := oauthClient.Get(c.HttpClient, c.Credentials, urlStr, form, c.oAuthCredentials)
 	if err != nil {
 		return err
 	}
